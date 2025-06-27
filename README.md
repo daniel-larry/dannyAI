@@ -1,5 +1,5 @@
 
-# Danny: Your Educational Voice Assistant
+# Danny AI: Your Educational Voice Assistant
 
 Danny is an AI-powered voice assistant specifically designed for educational support. Built by Daniel Larry with React, TypeScript, and modern web APIs, Danny AI provides an interactive learning experience through voice conversations.
 
