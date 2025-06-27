@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { motion } from 'framer-motion';
 import { Mic, MicOff, Send, Type, Menu, BookOpen, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -620,16 +621,19 @@ const Index = () => {
             <h2 className="text-xl font-semibold text-gray-800 mb-4">Conversation</h2>
             <div className="space-y-4 max-h-96 overflow-y-auto">
               {messages.slice(1).map((entry) => (
-                <div
+                <motion.div
                   key={entry.id}
-                  className={`p-4 rounded-xl ${entry.sender === 'user' ? 'bg-blue-50' : 'bg-green-50'}`}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className={`p-4 rounded-xl max-w-[80%] ${entry.sender === 'user' ? 'bg-blue-50 self-end rounded-br-none' : 'bg-green-50 self-start rounded-bl-none'}`}
                   onClick={() => entry.sender === 'ai' && speakText(entry.text)}
                 >
-                  <div className="flex items-start gap-2">
+                  <div className={`flex items-start gap-2 ${entry.sender === 'user' ? 'flex-row-reverse' : ''}`}>
                     {entry.sender === 'user' ? (
                       <UserAvatar avatarId={userAvatar} userName={userName} size="sm" />
                     ) : (
-                      <div className="w-6 h-6 rounded-full flex items-center justify-center bg-blue-500 text-white font-bold text-sm">
+                      <div className="w-6 h-6 rounded-full flex items-center justify-center bg-blue-500 text-white font-bold text-sm flex-shrink-0">
                         D
                       </div>
                     )}
@@ -640,7 +644,7 @@ const Index = () => {
                       <p className="text-gray-800">{entry.text}</p>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
           </Card>
