@@ -93,8 +93,16 @@ const AnimatedAssistant: React.FC<AnimatedAssistantProps> = ({ state, highlighte
       <motion.div
         className={`absolute inset-0 rounded-full bg-gradient-to-br ${getAuraColor()} blur-xl transition-all duration-500`}
         initial={{ scale: 1 }}
-        animate={{ scale: state !== 'idle' ? 1.5 : 1 }}
-        transition={{ duration: 0.5 }}
+        animate={
+          state === 'listening' || state === 'thinking' || state === 'speaking'
+            ? { scale: [1.5, 1.6, 1.5] }
+            : { scale: 1 }
+        }
+        transition={
+          state === 'listening' || state === 'thinking' || state === 'speaking'
+            ? { duration: 1.5, repeat: Infinity, ease: "easeInOut" }
+            : { duration: 0.5 }
+        }
       />
 
       {/* Main Character Container */}
@@ -195,7 +203,10 @@ const AnimatedAssistant: React.FC<AnimatedAssistantProps> = ({ state, highlighte
         className={`absolute inset-0 rounded-full border-2 transition-all duration-500`}
         initial={{ scale: 1, borderColor: 'rgba(147, 197, 253, 0.5)' }} // blue-300/50
         animate={{
-          scale: state === 'idle' ? 1 : 1.1,
+          scale:
+            state === 'listening' || state === 'thinking' || state === 'speaking'
+              ? [1.1, 1.2, 1.1]
+              : 1,
           borderColor:
             state === 'listening'
               ? 'rgba(74, 222, 128, 0.7)' // green-400/70
@@ -205,7 +216,11 @@ const AnimatedAssistant: React.FC<AnimatedAssistantProps> = ({ state, highlighte
               ? 'rgba(250, 204, 21, 0.7)' // yellow-400/70
               : 'rgba(147, 197, 253, 0.5)', // blue-300/50
         }}
-        transition={{ duration: 0.5 }}
+        transition={
+          state === 'listening' || state === 'thinking' || state === 'speaking'
+            ? { duration: 1.5, repeat: Infinity, ease: "easeInOut" }
+            : { duration: 0.5 }
+        }
       />
     </div>
   );
