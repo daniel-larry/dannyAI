@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "dannyai-944d6"
+  },
+  "targets": {
+    "dannyai-944d6": {
+      "hosting": {
+        "dannyai": [
+          "dannyai"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}
