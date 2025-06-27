@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
 import { Mic, MicOff, Send, Type, Menu, BookOpen, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -528,10 +527,10 @@ const Index = () => {
         <div className="text-center mb-8">
           <div className="relative inline-block mb-6">
             <AnimatedAssistant state={dannyState} />
-            <p className="text-lg font-medium text-gray-700 mt-4">{getStatusText()}</p>
           </div>
           
           <div className="mb-6">
+            <p className="text-lg font-medium text-gray-700 mb-4">{getStatusText()}</p>
             {currentTranscript && (
               <p className="text-sm text-gray-600 mt-2 p-3 bg-white rounded-lg shadow-sm border">
                 🎤 "{currentTranscript}"
@@ -571,19 +570,10 @@ const Index = () => {
             <>
               <Button
                 onClick={startListening}
-                disabled={!isSupported || dannyState === 'speaking' || dannyState === 'thinking' || dannyState === 'listening'}
+                disabled={!isSupported || dannyState === 'speaking'}
                 size="lg"
-                title={(() => {
-                  if (dannyState === 'speaking') return "Danny is speaking...";
-                  if (dannyState === 'thinking') return "Danny is thinking...";
-                  if (dannyState === 'listening') return "Listening...";
-                  return isMicActive ? "Stop Listening" : "Start Listening";
-                })()}
-                variant={(() => {
-                  if (dannyState === 'listening') return "recording";
-                  if (dannyState === 'speaking' || dannyState === 'thinking') return "ghost";
-                  return isMicActive ? "recording" : "default";
-                })()}
+                title={isMicActive ? "Stop Listening" : "Start Listening"}
+                variant={isMicActive ? "recording" : "default"}
                 className={!isMicActive && dannyState === 'idle' ? 'pulse-effect' : ''}
               >
                 {isMicActive ? <MicOff className="w-5 h-5 text-white" /> : <Mic className="w-5 h-5 text-white" />}
@@ -621,19 +611,16 @@ const Index = () => {
             <h2 className="text-xl font-semibold text-gray-800 mb-4">Conversation</h2>
             <div className="space-y-4 max-h-96 overflow-y-auto">
               {messages.slice(1).map((entry) => (
-                <motion.div
+                <div
                   key={entry.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className={`p-4 rounded-xl max-w-[80%] ${entry.sender === 'user' ? 'bg-blue-50 self-end rounded-br-none' : 'bg-green-50 self-start rounded-bl-none'}`}
+                  className={`p-4 rounded-xl ${entry.sender === 'user' ? 'bg-blue-50' : 'bg-green-50'}`}
                   onClick={() => entry.sender === 'ai' && speakText(entry.text)}
                 >
-                  <div className={`flex items-start gap-2 ${entry.sender === 'user' ? 'flex-row-reverse' : ''}`}>
+                  <div className="flex items-start gap-2">
                     {entry.sender === 'user' ? (
                       <UserAvatar avatarId={userAvatar} userName={userName} size="sm" />
                     ) : (
-                      <div className="w-6 h-6 rounded-full flex items-center justify-center bg-blue-500 text-white font-bold text-sm flex-shrink-0">
+                      <div className="w-6 h-6 rounded-full flex items-center justify-center bg-blue-500 text-white font-bold text-sm">
                         D
                       </div>
                     )}
@@ -644,7 +631,7 @@ const Index = () => {
                       <p className="text-gray-800">{entry.text}</p>
                     </div>
                   </div>
-                </motion.div>
+                </div>
               ))}
             </div>
           </Card>
