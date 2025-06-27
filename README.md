@@ -1,9 +1,9 @@
 
 # Danny: Your Educational Voice Assistant
 
-Danny is an AI-powered voice assistant specifically designed for educational support. Built with React, TypeScript, and modern web APIs, Danny provides an interactive learning experience through voice conversations.
+Danny is an AI-powered voice assistant specifically designed for educational support. Built by Daniel Larry with React, TypeScript, and modern web APIs, Danny AI provides an interactive learning experience through voice conversations.
 
-## Features
+## Accessibility Features
 
 - **Voice Recognition**: Real-time speech-to-text using Web Speech API
 - **AI-Powered Responses**: Educational Q&A powered by Google Gemini 1.5 Flash
@@ -26,7 +26,7 @@ npm install
 Create a `.env.local` file in the root directory and add your Gemini API key:
 
 ```
-VITE_GEMINI_API_KEY=AIzaSyAhu1f2l3HJ0EUBaNI4wt8Ys9TJmu_ES3w
+VITE_GEMINI_API_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
 ### 3. Run the Development Server
