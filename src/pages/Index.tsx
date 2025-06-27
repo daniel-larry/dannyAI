@@ -7,8 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { useToast } from '@/hooks/use-toast';
 import AnimatedAssistant from '@/components/AnimatedAssistant';
+import AccessibilitySettings from '@/components/AccessibilitySettings';
 import UserNameModal from '@/components/UserNameModal';
-import SettingsMenu from '@/components/SettingsMenu';
+import ProfileSettings from '@/components/ProfileSettings';
 import UserAvatar from '@/components/UserAvatar';
 import { useChat } from '@/hooks/use-chat';
 import DocumentationModal from '@/components/DocumentationModal';
@@ -466,19 +467,60 @@ const Index = () => {
           <div className="flex items-center justify-between mb-2">
             <div className="hidden md:block w-16"></div> {/* Placeholder for alignment on desktop */}
             <h1 className="text-4xl font-bold text-gray-800 text-center flex-grow">Danny: Your Learning Assistant</h1>
-            <SettingsMenu
-              speechRate={speechRate}
-              speechVolume={speechVolume}
-              selectedVoice={selectedVoice}
-              onSpeechRateChange={handleSpeechRateChange}
-              onSpeechVolumeChange={handleSpeechVolumeChange}
-              onVoiceChange={handleVoiceChange}
-              userContext={userContext}
-              onUserContextChange={setUserContext}
-              userAvatar={userAvatar}
-              userName={userName}
-              setShowDocumentationModal={setShowDocumentationModal}
-            />
+            <div className="hidden md:flex items-center space-x-2">
+              <AccessibilitySettings
+                speechRate={speechRate}
+                speechVolume={speechVolume}
+                selectedVoice={selectedVoice}
+                onSpeechRateChange={handleSpeechRateChange}
+                onSpeechVolumeChange={handleSpeechVolumeChange}
+                onVoiceChange={handleVoiceChange}
+              />
+              
+              
+              <ProfileSettings userContext={userContext} onUserContextChange={setUserContext} userAvatar={userAvatar} userName={userName} />
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowDocumentationModal(true)}
+                title="View Documentation"
+              >
+                <BookOpen className="h-6 w-6" />
+              </Button>
+            </div>
+            <div className="md:hidden flex items-center space-x-2">
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <Menu className="h-6 w-6" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right">
+                  <SheetHeader>
+                    <SheetTitle>Settings</SheetTitle>
+                  </SheetHeader>
+                  <div className="flex flex-col space-y-4 py-4">
+                    <AccessibilitySettings
+                      speechRate={speechRate}
+                      speechVolume={speechVolume}
+                      selectedVoice={selectedVoice}
+                      onSpeechRateChange={handleSpeechRateChange}
+                      onSpeechVolumeChange={handleSpeechVolumeChange}
+                      onVoiceChange={handleVoiceChange}
+                    />
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start"
+                      title="View Documentation"
+                      onClick={() => setShowDocumentationModal(true)}
+                    >
+                      <BookOpen className="h-4 w-4 mr-2" /> Documentation
+                    </Button>
+                    <ProfileSettings userContext={userContext} onUserContextChange={setUserContext} userAvatar={userAvatar} userName={userName} />
+                  </div>
+                </SheetContent>
+              </Sheet>
+            </div>
           </div>
           <p className="text-gray-600">Voice-powered AI assistant for educational support</p>
         </div>
