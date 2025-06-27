@@ -570,10 +570,19 @@ const Index = () => {
             <>
               <Button
                 onClick={startListening}
-                disabled={!isSupported || dannyState === 'speaking'}
+                disabled={!isSupported || dannyState === 'speaking' || dannyState === 'thinking' || dannyState === 'listening'}
                 size="lg"
-                title={isMicActive ? "Stop Listening" : "Start Listening"}
-                variant={isMicActive ? "recording" : "default"}
+                title={(() => {
+                  if (dannyState === 'speaking') return "Danny is speaking...";
+                  if (dannyState === 'thinking') return "Danny is thinking...";
+                  if (dannyState === 'listening') return "Listening...";
+                  return isMicActive ? "Stop Listening" : "Start Listening";
+                })()}
+                variant={(() => {
+                  if (dannyState === 'listening') return "recording";
+                  if (dannyState === 'speaking' || dannyState === 'thinking') return "ghost";
+                  return isMicActive ? "recording" : "default";
+                })()}
                 className={!isMicActive && dannyState === 'idle' ? 'pulse-effect' : ''}
               >
                 {isMicActive ? <MicOff className="w-5 h-5 text-white" /> : <Mic className="w-5 h-5 text-white" />}
