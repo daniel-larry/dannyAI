@@ -212,9 +212,6 @@ const Index = () => {
         onend: () => {
           setDannyState('idle');
           setCurrentResponse('');
-          if (inputMode === 'voice') {
-            setTimeout(() => startListening(), 500);
-          }
         }
       });
     } else {
