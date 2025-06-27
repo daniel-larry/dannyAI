@@ -567,11 +567,21 @@ const Index = () => {
           </div>
 
           {inputMode === 'voice' ? (
-            <Button onClick={startListening} disabled={!isSupported || dannyState === 'speaking'} size="lg" title={isMicActive ? "Stop Listening" : "Start Listening"}
-              variant={isMicActive ? "recording" : "default"}
-            >
-              {isMicActive ? <MicOff className="w-5 h-5 text-white" /> : <Mic className="w-5 h-5 text-white" />}
-            </Button>
+            <>
+              <Button
+                onClick={startListening}
+                disabled={!isSupported || dannyState === 'speaking'}
+                size="lg"
+                title={isMicActive ? "Stop Listening" : "Start Listening"}
+                variant={isMicActive ? "recording" : "default"}
+                className={!isMicActive && dannyState === 'idle' ? 'pulse-effect' : ''}
+              >
+                {isMicActive ? <MicOff className="w-5 h-5 text-white" /> : <Mic className="w-5 h-5 text-white" />}
+              </Button>
+              {!isMicActive && dannyState === 'idle' && (
+                <p className="text-sm text-gray-500 mt-2">Click to Speak</p>
+              )}
+            </>
           ) : (
             <form onSubmit={handleTextSubmit} className="flex gap-2 max-w-md mx-auto">
               <Input
