@@ -122,7 +122,7 @@ const AnimatedAssistant: React.FC<AnimatedAssistantProps> = ({ state, highlighte
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            transition={{ duration: 0.5, ease: "easeOut" }}
+            transition={{ duration: 1.5, ease: "easeOut" }}
           />
         </div>
 
