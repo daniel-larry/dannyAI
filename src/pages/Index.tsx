@@ -527,10 +527,10 @@ const Index = () => {
         <div className="text-center mb-8">
           <div className="relative inline-block mb-6">
             <AnimatedAssistant state={dannyState} />
+            <p className="text-lg font-medium text-gray-700 mt-4">{getStatusText()}</p>
           </div>
           
           <div className="mb-6">
-            <p className="text-lg font-medium text-gray-700 mb-4">{getStatusText()}</p>
             {currentTranscript && (
               <p className="text-sm text-gray-600 mt-2 p-3 bg-white rounded-lg shadow-sm border">
                 🎤 "{currentTranscript}"
