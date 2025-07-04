@@ -12,7 +12,6 @@ const AccessibilitySettings = () => {
   const {
     speechRate,
     speechVolume,
-    ttsVoice,
     userAvatar,
     setSpeechRate,
     setSpeechVolume,
