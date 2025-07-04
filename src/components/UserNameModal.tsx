@@ -3,42 +3,40 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { useChat } from '@/hooks/use-chat';
-import { useEffect } from 'react';
 import AvatarSelector from './AvatarSelector';
 import DocumentationModal from './DocumentationModal';
 import { BookOpen } from 'lucide-react';
+import { useVoiceSettings } from '@/hooks/use-voice-settings';
 
 interface UserNameModalProps {
   isOpen: boolean;
-  onSubmit: (name: string, avatar: string) => void;
+  onSubmit: (name: string, avatar: string, voice: string) => void;
 }
 
-const UserNameModal = ({ isOpen, onSubmit }: UserNameModalProps) => {
+const UserNameModal = ({
+  isOpen,
+  onSubmit,
+}: UserNameModalProps) => {
   const [name, setName] = useState('');
-  const { speakText } = useChat();
   const [showDocumentationModal, setShowDocumentationModal] = useState(false);
+  const { userAvatar, ttsVoice, setUserAvatar, setTtsVoice, synthesizeSpeech } = useVoiceSettings();
 
-  const [hasSpokenWelcome, setHasSpokenWelcome] = useState(false);
-
-  const handleAvatarClick = () => {
-    if (!hasSpokenWelcome) {
-      speakText("Hi there! I'm Danny, your AI learning assistant. Let's get you set up!");
-      setHasSpokenWelcome(true);
-    }
+  const handleAvatarClick = (voice: string) => {
+    const message = name ? `Hey ${name}, ready to learn with you!` : "Hey buddy, ready to learn with you.";
+    synthesizeSpeech(message, voice);
+    setTtsVoice(voice);
   };
-  const [selectedAvatar, setSelectedAvatar] = useState('avatar-1');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (name.trim()) {
-      onSubmit(name.trim(), selectedAvatar);
+      onSubmit(name.trim(), userAvatar, ttsVoice);
     }
   };
 
   return (
     <Dialog open={isOpen}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-center text-gray-800">
             Welcome to Danny Ai! 👋
@@ -50,19 +48,23 @@ const UserNameModal = ({ isOpen, onSubmit }: UserNameModalProps) => {
         
         <form onSubmit={handleSubmit} className="space-y-6 mt-4">
           <div className="space-y-2">
+            <label htmlFor="name" className="text-sm font-medium text-gray-700">
+              Your Name
+            </label>
             <Input
+              id="name"
               type="text"
-              placeholder="Enter your name to use the app..."
+              placeholder="Enter your name..."
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="text-center text-lg py-3"
+              className="text-lg py-3"
               autoFocus
             />
           </div>
           
           <AvatarSelector
-            selectedAvatar={selectedAvatar}
-            onAvatarSelect={setSelectedAvatar}
+            selectedAvatar={userAvatar}
+            onAvatarSelect={setUserAvatar}
             onAvatarClick={handleAvatarClick}
           />
           

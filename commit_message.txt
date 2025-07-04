@@ -1,0 +1,3 @@
+feat: Build and deploy application
+
+This commit includes the build artifacts and prepares for deployment to Firebase.

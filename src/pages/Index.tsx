@@ -11,6 +11,7 @@ import UserNameModal from '@/components/UserNameModal';
 import ProfileSettings from '@/components/ProfileSettings';
 import UserAvatar from '@/components/UserAvatar';
 import { useChat } from '@/hooks/use-chat';
+import { useVoiceSettings } from '@/hooks/use-voice-settings';
 import DocumentationModal from '@/components/DocumentationModal';
 
 // Hardcoded Gemini API key
@@ -48,20 +49,6 @@ declare global {
     webkitSpeechRecognition: {
       new (): SpeechRecognition;
     };
-    responsiveVoice: {
-      speak: (text: string, voice?: string, parameters?: {
-        pitch?: number;
-        rate?: number;
-        volume?: number;
-        onstart?: () => void;
-        onend?: () => void;
-      }) => void;
-      cancel: () => void;
-      voiceSupport: () => boolean;
-      isPlaying: () => boolean;
-      pause: () => void;
-      resume: () => void;
-    };
   }
 }
 
@@ -73,6 +60,17 @@ const Index = () => {
   const { state: chatState, dispatch, addMessage } = useChat();
   const { messages, userName } = chatState;
 
+  const {
+    speechRate,
+    speechVolume,
+    ttsVoice,
+    userAvatar,
+    setSpeechRate,
+    setSpeechVolume,
+    setTtsVoice,
+    setUserAvatar,
+    synthesizeSpeech,
+  } = useVoiceSettings();
   const [dannyState, setDannyState] = useState<DannyState>('idle');
   const [inputMode, setInputMode] = useState<InputMode>('voice');
   const [textInput, setTextInput] = useState('');
@@ -82,13 +80,7 @@ const Index = () => {
   const [highlightedWordIndex, setHighlightedWordIndex] = useState(-1);
   const [isMicActive, setIsMicActive] = useState(false);
   
-  // Accessibility settings
-  const [speechRate, setSpeechRate] = useState(1.2);
-  const [speechVolume, setSpeechVolume] = useState(1);
-  const [selectedVoice, setSelectedVoice] = useState('UK English Female');
-  
   // User settings
-  const [userAvatar, setUserAvatar] = useState<string>('cat1');
   const [userContext, setUserContext] = useState<string>('');
   const [showNameModal, setShowNameModal] = useState(false);
   const [hasWelcomed, setHasWelcomed] = useState(false);
@@ -103,32 +95,14 @@ const Index = () => {
 
   // Load user preferences from localStorage
   useEffect(() => {
-    const savedUserAvatar = localStorage.getItem('danny-user-avatar');
     const savedUserContext = localStorage.getItem('danny-user-context');
-    const savedSpeechRate = localStorage.getItem('danny-speech-rate');
-    const savedSpeechVolume = localStorage.getItem('danny-speech-volume');
-    const savedSelectedVoice = localStorage.getItem('danny-selected-voice');
     
-    if (userName && savedUserAvatar) {
-      setUserAvatar(savedUserAvatar);
-    } else if (!userName) {
+    if (!userName) {
       setShowNameModal(true);
     }
     
     if (savedUserContext) {
       setUserContext(savedUserContext);
-    }
-    
-    if (savedSpeechRate) {
-      setSpeechRate(parseFloat(savedSpeechRate));
-    }
-    
-    if (savedSpeechVolume) {
-      setSpeechVolume(parseFloat(savedSpeechVolume));
-    }
-    
-    if (savedSelectedVoice) {
-      setSelectedVoice(savedSelectedVoice);
     }
   }, [userName]);
 
@@ -137,7 +111,7 @@ const Index = () => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
       setIsSupported(false);
       const errorMessage = "Your browser doesn't support voice input, but you can still type your questions!";
-      speakText(errorMessage);
+      synthesizeSpeech(errorMessage);
       toast({
         title: "Voice Input Not Supported",
         description: errorMessage,
@@ -182,59 +156,19 @@ const Index = () => {
   };
 
   // Handle user name and avatar submission
-  const handleUserNameSubmit = async (name: string, avatar: string) => {
+  const handleUserNameSubmit = async (name: string, avatar: string, voice: string) => {
     dispatch({ type: 'SET_USER_NAME', payload: name });
     setUserAvatar(avatar);
-    localStorage.setItem('danny-user-avatar', avatar);
+    setTtsVoice(voice);
     setShowNameModal(false);
     
     if (inputMode === 'voice') {
       setDannyState('thinking');
       const welcomeMessage = await generateWelcomeMessage(name);
-      speakText(welcomeMessage);
+      await synthesizeSpeech(welcomeMessage);
+      setDannyState('idle');
     }
     setHasWelcomed(true);
-  };
-
-  // Speak text using ResponsiveVoice
-  const speakText = (text: string) => {
-    if (!text.trim()) return;
-    
-    setDannyState('speaking');
-    setCurrentResponse(text);
-    
-    if (window.responsiveVoice) {
-      window.responsiveVoice.cancel();
-      window.responsiveVoice.speak(text, selectedVoice, {
-        rate: speechRate,
-        pitch: 1,
-        volume: speechVolume,
-        onend: () => {
-          setDannyState('idle');
-          setCurrentResponse('');
-        }
-      });
-    } else {
-      console.error('ResponsiveVoice not available');
-      setDannyState('idle');
-      setCurrentResponse('');
-    }
-  };
-
-  // Handle accessibility setting changes
-  const handleSpeechRateChange = (rate: number) => {
-    setSpeechRate(rate);
-    localStorage.setItem('danny-speech-rate', rate.toString());
-  };
-
-  const handleSpeechVolumeChange = (volume: number) => {
-    setSpeechVolume(volume);
-    localStorage.setItem('danny-speech-volume', volume.toString());
-  };
-
-  const handleVoiceChange = (voice: string) => {
-    setSelectedVoice(voice);
-    localStorage.setItem('danny-selected-voice', voice);
   };
 
   // Handle input mode change
@@ -247,7 +181,8 @@ const Index = () => {
       setTimeout(async () => {
         setDannyState('thinking');
         const welcomeMessage = await generateWelcomeMessage(userName);
-        speakText(welcomeMessage);
+        await synthesizeSpeech(welcomeMessage);
+        setDannyState('idle');
         setHasWelcomed(true);
       }, 500);
     }
@@ -282,7 +217,7 @@ const Index = () => {
       noSpeechTimeoutRef.current = setTimeout(() => {
         recognition.stop();
         const errorMessage = "I didn't hear anything. Please try speaking when the microphone is active!";
-        speakText(errorMessage);
+        synthesizeSpeech(errorMessage);
         toast({
           title: "No Speech Detected",
           description: errorMessage,
@@ -310,7 +245,7 @@ const Index = () => {
       noSpeechTimeoutRef.current = setTimeout(() => {
         recognition.stop();
         const errorMessage = "I stopped listening because I didn't hear anything for a while. Feel free to try again!";
-        speakText(errorMessage);
+        synthesizeSpeech(errorMessage);
         toast({
           title: "No Further Speech Detected",
           description: errorMessage,
@@ -339,7 +274,7 @@ const Index = () => {
       if (speechEndTimeoutRef.current) clearTimeout(speechEndTimeoutRef.current);
       setDannyState('error_speech_recognition');
       const errorMessage = "Oops, something went wrong! I couldn't quite catch that. Please try speaking a bit louder or closer to the microphone.";
-      speakText(errorMessage);
+      synthesizeSpeech(errorMessage);
       toast({
         title: "Oops, something went wrong!",
         description: "I couldn't quite catch that. Please try speaking a bit louder or closer to the microphone.",
@@ -396,13 +331,17 @@ const Index = () => {
       const dannyResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || "I'm sorry, I couldn't process that question. Could you try asking it differently?";
 
       addMessage(dannyResponse, 'ai');
-      speakText(dannyResponse);
+      setDannyState('speaking');
+      setCurrentResponse(dannyResponse);
+      await synthesizeSpeech(dannyResponse);
+      setDannyState('idle');
+      setCurrentResponse('');
 
     } catch (error) {
       console.error('API Error:', error);
       setDannyState('error_api');
       const errorMessage = "Hmm, I'm having a little trouble connecting right now. Please try again in a moment.";
-      speakText(errorMessage);
+      synthesizeSpeech(errorMessage);
       toast({
         title: "Connection Problem",
         description: "The AI service is overcrowded at the moment. Please try again in a moment!",
@@ -412,7 +351,7 @@ const Index = () => {
         setDannyState('idle');
       }, 5000);
       if (inputMode === 'voice') {
-        speakText(errorMessage);
+        synthesizeSpeech(errorMessage);
       }
     }
   };
@@ -427,7 +366,7 @@ const Index = () => {
 
   // Start listening
   const startListening = () => {
-    if (!isSupported || (window.responsiveVoice && window.responsiveVoice.isPlaying())) return;
+    if (!isSupported || dannyState === 'speaking') return;
 
     if (recognitionRef.current && isMicActive) {
       recognitionRef.current.stop();
@@ -459,7 +398,10 @@ const Index = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-4">
       <div className="container max-w-4xl mx-auto">
         
-        <UserNameModal isOpen={showNameModal} onSubmit={handleUserNameSubmit} />
+        <UserNameModal
+          isOpen={showNameModal}
+          onSubmit={handleUserNameSubmit}
+        />
         <DocumentationModal isOpen={showDocumentationModal} onOpenChange={setShowDocumentationModal} />
         
         <div className="text-center mb-8 pt-8">
@@ -467,14 +409,7 @@ const Index = () => {
             <div className="hidden md:block w-16"></div> {/* Placeholder for alignment on desktop */}
             <h1 className="text-4xl font-bold text-gray-800 text-center flex-grow">Danny: Your Learning Assistant</h1>
             <div className="hidden md:flex items-center space-x-2">
-              <AccessibilitySettings
-                speechRate={speechRate}
-                speechVolume={speechVolume}
-                selectedVoice={selectedVoice}
-                onSpeechRateChange={handleSpeechRateChange}
-                onSpeechVolumeChange={handleSpeechVolumeChange}
-                onVoiceChange={handleVoiceChange}
-              />
+              <AccessibilitySettings />
               
               
               <ProfileSettings userContext={userContext} onUserContextChange={setUserContext} userAvatar={userAvatar} userName={userName} />
@@ -499,14 +434,7 @@ const Index = () => {
                     <SheetTitle>Settings</SheetTitle>
                   </SheetHeader>
                   <div className="flex flex-col space-y-4 py-4">
-                    <AccessibilitySettings
-                      speechRate={speechRate}
-                      speechVolume={speechVolume}
-                      selectedVoice={selectedVoice}
-                      onSpeechRateChange={handleSpeechRateChange}
-                      onSpeechVolumeChange={handleSpeechVolumeChange}
-                      onVoiceChange={handleVoiceChange}
-                    />
+                    <AccessibilitySettings />
                     <Button
                       variant="ghost"
                       className="w-full justify-start"
@@ -614,7 +542,7 @@ const Index = () => {
                 <div
                   key={entry.id}
                   className={`p-4 rounded-xl ${entry.sender === 'user' ? 'bg-blue-50' : 'bg-green-50'}`}
-                  onClick={() => entry.sender === 'ai' && speakText(entry.text)}
+                  onClick={() => entry.sender === 'ai' && synthesizeSpeech(entry.text)}
                 >
                   <div className="flex items-start gap-2">
                     {entry.sender === 'user' ? (

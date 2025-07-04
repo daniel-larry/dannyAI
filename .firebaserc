@@ -7,6 +7,9 @@
       "hosting": {
         "dannyai": [
           "dannyai"
+        ],
+        "dannyai-944d6": [
+          "dannyai-944d6"
         ]
       }
     }

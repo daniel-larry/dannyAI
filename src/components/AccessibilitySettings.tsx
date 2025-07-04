@@ -1,38 +1,36 @@
 
-import React, { useState } from 'react';
-import { Settings, Volume2, Gauge, Mic } from 'lucide-react';
+import React from 'react';
+import { Settings, Volume2, Gauge } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Card } from '@/components/ui/card';
+import AvatarSelector from './AvatarSelector';
+import { useVoiceSettings } from '@/hooks/use-voice-settings';
 
-interface AccessibilitySettingsProps {
-  speechRate: number;
-  speechVolume: number;
-  selectedVoice: string;
-  onSpeechRateChange: (rate: number) => void;
-  onSpeechVolumeChange: (volume: number) => void;
-  onVoiceChange: (voice: string) => void;
-}
+const AccessibilitySettings = () => {
+  const {
+    speechRate,
+    speechVolume,
+    ttsVoice,
+    userAvatar,
+    setSpeechRate,
+    setSpeechVolume,
+    setTtsVoice,
+    setUserAvatar,
+    synthesizeSpeech,
+  } = useVoiceSettings();
 
-const voiceOptions = [
-  { value: 'UK English Male', label: 'English Male' },
-  { value: 'UK English Female', label: 'English Female' },
-  { value: 'US English Male', label: 'English Male 2' },
-  { value: 'US English Female', label: 'English Female 2' },
-  { value: 'Australian English Male', label: 'English Male 3' },
-  { value: 'Australian English Female', label: 'English Female 3' },
-];
+  const handleAvatarSelect = (avatarId: string) => {
+    setUserAvatar(avatarId);
+  };
 
-const AccessibilitySettings = ({
-  speechRate,
-  speechVolume,
-  selectedVoice,
-  onSpeechRateChange,
-  onSpeechVolumeChange,
-  onVoiceChange
-}: AccessibilitySettingsProps) => {
+  const handleAvatarClick = (voice: string) => {
+    const voiceName = voice.split('-')[0];
+    synthesizeSpeech(`Hi, I'm ${voiceName}, your companion.`, voice);
+    setTtsVoice(voice);
+  };
+
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -45,34 +43,18 @@ const AccessibilitySettings = ({
           <Settings className="h-4 w-4" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-4" align="end">
+      <PopoverContent className="w-100 p-4" align="end">
         <Card className="p-4 border-0 shadow-none">
           <h3 className="text-lg font-semibold mb-4 text-gray-800">
             Accessibility Settings
           </h3>
           
           <div className="space-y-6">
-            {/* Voice Selection */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Mic className="h-4 w-4 text-purple-600" />
-                <label className="text-sm font-medium text-gray-700">
-                  Voice
-                </label>
-              </div>
-              <Select value={selectedVoice} onValueChange={onVoiceChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a voice" />
-                </SelectTrigger>
-                <SelectContent>
-                  {voiceOptions.map((voice) => (
-                    <SelectItem key={voice.value} value={voice.value}>
-                      {voice.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <AvatarSelector
+              selectedAvatar={userAvatar}
+              onAvatarSelect={handleAvatarSelect}
+              onAvatarClick={handleAvatarClick}
+            />
 
             {/* Speech Rate Control */}
             <div className="space-y-3">
@@ -84,7 +66,7 @@ const AccessibilitySettings = ({
               </div>
               <Slider
                 value={[speechRate]}
-                onValueChange={(value) => onSpeechRateChange(value[0])}
+                onValueChange={(value) => setSpeechRate(value[0])}
                 min={0.5}
                 max={2.0}
                 step={0.1}
@@ -107,7 +89,7 @@ const AccessibilitySettings = ({
               </div>
               <Slider
                 value={[speechVolume]}
-                onValueChange={(value) => onSpeechVolumeChange(value[0])}
+                onValueChange={(value) => setSpeechVolume(value[0])}
                 min={0.1}
                 max={1.0}
                 step={0.1}

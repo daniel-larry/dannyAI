@@ -4,11 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
-import { useChat } from "./hooks/use-chat";
-
 const App = () => {
-  const { state } = useChat();
-
   return (
     <TooltipProvider>
       <Toaster />

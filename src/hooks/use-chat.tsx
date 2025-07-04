@@ -23,7 +23,6 @@ interface ChatContextProps {
   state: ChatState;
   dispatch: React.Dispatch<ChatAction>;
   addMessage: (text: string, sender: 'user' | 'ai') => void;
-  speakText: (text: string) => void;
 }
 
 const ChatContext = createContext<ChatContextProps | undefined>(undefined);
@@ -95,16 +94,8 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     dispatch({ type: 'ADD_MESSAGE', payload: newMessage });
   };
 
-  const speakText = (text: string) => {
-    if (window.responsiveVoice) {
-      window.responsiveVoice.speak(text);
-    } else {
-      console.warn("ResponsiveVoice not loaded.");
-    }
-  };
-
   return (
-    <ChatContext.Provider value={{ state, dispatch, addMessage, speakText }}>
+    <ChatContext.Provider value={{ state, dispatch, addMessage }}>
       {children}
     </ChatContext.Provider>
   );
