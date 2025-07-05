@@ -23,7 +23,7 @@ const UserNameModal = ({
 
   const handleAvatarClick = (voice: string) => {
     const message = name ? `Hey ${name}, ready to learn with you!` : "Hey buddy, ready to learn with you.";
-    synthesizeSpeech(message, voice);
+    synthesizeSpeech(message, voice, true);
     setTtsVoice(voice);
   };
 

@@ -2,7 +2,7 @@
 import React, { createContext, useReducer, useContext, useEffect, ReactNode } from 'react';
 
 // 1. Define the shape of our state and actions
-interface Message {
+export interface Message {
   id: string;
   text: string;
   sender: 'user' | 'ai';
@@ -11,6 +11,7 @@ interface Message {
 interface ChatState {
   messages: Message[];
   userName: string | null;
+  loading: boolean;
 }
 
 type ChatAction =
@@ -23,6 +24,7 @@ interface ChatContextProps {
   state: ChatState;
   dispatch: React.Dispatch<ChatAction>;
   addMessage: (text: string, sender: 'user' | 'ai') => void;
+  loading: boolean; // Add loading to context
 }
 
 const ChatContext = createContext<ChatContextProps | undefined>(undefined);
@@ -50,6 +52,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   const [state, dispatch] = useReducer(chatReducer, {
     messages: [],
     userName: null,
+    loading: true, // Initialize loading to true
   });
 
   // Load state from localStorage on initial render
@@ -69,10 +72,13 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
                 },
             ],
         };
-        dispatch({ type: 'LOAD_STATE', payload: initialState });
+        dispatch({ type: 'LOAD_STATE', payload: { ...initialState, loading: false } }); // Set loading to false after loading state
+      } else {
+        dispatch({ type: 'LOAD_STATE', payload: { ...state, loading: false } }); // Set loading to false if no saved state
       }
     } catch (error) {
       console.error("Failed to parse chat state from localStorage", error);
+      dispatch({ type: 'LOAD_STATE', payload: { ...state, loading: false } }); // Set loading to false on error
     }
   }, []);
 
@@ -95,7 +101,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   };
 
   return (
-    <ChatContext.Provider value={{ state, dispatch, addMessage }}>
+    <ChatContext.Provider value={{ state, dispatch, addMessage, loading: state.loading }}>
       {children}
     </ChatContext.Provider>
   );

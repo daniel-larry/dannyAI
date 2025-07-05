@@ -26,7 +26,7 @@ const AccessibilitySettings = () => {
 
   const handleAvatarClick = (voice: string) => {
     const voiceName = voice.split('-')[0];
-    synthesizeSpeech(`Hi, I'm ${voiceName}, your companion.`, voice);
+    synthesizeSpeech(`Hi, I'm ${voiceName}, your companion.`, voice, true);
     setTtsVoice(voice);
   };
 

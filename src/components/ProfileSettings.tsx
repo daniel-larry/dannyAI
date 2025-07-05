@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { db } from '@/lib/db'; // Import db
 
 interface ProfileSettingsProps {
   userContext: string;
@@ -91,6 +92,27 @@ const ProfileSettings = ({ userContext, onUserContextChange, userAvatar, userNam
     });
   };
 
+  const handleClearAll = async () => {
+    localStorage.removeItem('chatState');
+    localStorage.removeItem('danny-user-context');
+    try {
+      await db.audioCache.clear();
+      toast({
+        title: "Data Cleared",
+        description: "All local data and cache have been cleared.",
+      });
+    } catch (error) {
+      console.error("Failed to clear IndexedDB cache:", error);
+      toast({
+        title: "Error Clearing Cache",
+        description: "Failed to clear audio cache.",
+        variant: "destructive"
+      });
+    }
+    // Reload the page to apply changes and show the welcome flow
+    window.location.reload();
+  };
+
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -162,6 +184,10 @@ const ProfileSettings = ({ userContext, onUserContextChange, userAvatar, userNam
               <Button variant="outline" onClick={clearContext}>
                 <Trash2 className="w-4 h-4 mr-2" />
                 Clear
+              </Button>
+              <Button variant="destructive" onClick={handleClearAll} className="flex-1">
+                <Trash2 className="w-4 h-4 mr-2" />
+                Clear All Data
               </Button>
             </div>
           </div>

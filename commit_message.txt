@@ -1,1 +1,4 @@
-refactor: use environment variables for api keys
+docs: Add commit_message.txt for consistent commit messages
+
+This file will be used to store and reuse commit messages,
+ensuring consistency and avoiding retyping.
