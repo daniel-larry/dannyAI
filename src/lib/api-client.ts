@@ -11,131 +11,151 @@ interface ApiKey {
   key: string;
   isHealthy: boolean;
   lastFailureTime: number;
-  failureCount: number; // New: Consecutive failure count
-  lastUsed: number; // New: Timestamp of last use for round-robin
+  failureCount: number;
+  lastUsed: number;
 }
 
-const INITIAL_COOLDOWN_PERIOD = 60 * 1000; // 1 minute initial cooldown
+const INITIAL_COOLDOWN_PERIOD = 60 * 1000; // 1 minute
+const MAX_COOLDOWN_PERIOD = 30 * 60 * 1000; // 30 minutes
 const API_KEY_STATUS_STORAGE_KEY = 'groq_api_key_status';
+const HEALTH_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
+const HEALTH_CHECK_URL = "https://api.groq.com/openai/v1/models"; // A lightweight endpoint
 
-let apiKeys: ApiKey[];
-let lastUsedKeyIndex: number = -1; // Track the last used key for round-robin
+let apiKeys: ApiKey[] = [];
+let healthCheckIntervalId: number | null = null;
 
 function calculateCooldown(failureCount: number): number {
-  // Exponential backoff: 1 min, 2 min, 4 min, 8 min, etc.
-  return INITIAL_COOLDOWN_PERIOD * Math.pow(2, Math.min(failureCount, 5)); // Cap at 5 for max 32 min cooldown
+  const backoff = INITIAL_COOLDOWN_PERIOD * Math.pow(2, failureCount);
+  return Math.min(backoff, MAX_COOLDOWN_PERIOD);
+}
+
+function saveApiKeyStatus() {
+  try {
+    const statusToStore = apiKeys.map(({ key, isHealthy, lastFailureTime, failureCount }) => ({
+      key, isHealthy, lastFailureTime, failureCount
+    }));
+    localStorage.setItem(API_KEY_STATUS_STORAGE_KEY, JSON.stringify(statusToStore));
+    console.log('[API Client] Saved API key status to localStorage.');
+  } catch (e) {
+    console.error('[API Client] Error saving API key status to localStorage:', e);
+  }
+}
+
+async function performHealthCheck(key: string): Promise<boolean> {
+  try {
+    const response = await fetch(HEALTH_CHECK_URL, {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${key}` },
+    });
+    return response.ok;
+  } catch (error) {
+    console.warn(`[API Client] Health check failed for a key (likely network error):`, error);
+    return false;
+  }
+}
+
+export async function runHealthChecks(force = false) {
+  const now = Date.now();
+  console.log(`[API Client] Running health checks (force=${force})...`);
+
+  const checks = apiKeys.map(async (apiKey, index) => {
+    const cooldown = calculateCooldown(apiKey.failureCount);
+    const timeSinceFailure = now - apiKey.lastFailureTime;
+
+    // Only check if forced, or if it's healthy, or if its cooldown has passed
+    if (force || apiKey.isHealthy || timeSinceFailure > cooldown) {
+      const wasHealthy = apiKey.isHealthy;
+      const isNowHealthy = await performHealthCheck(apiKey.key);
+
+      if (isNowHealthy) {
+        if (!wasHealthy) {
+          console.log(`[API Client] Key ${index} has recovered and is now healthy.`);
+          toast({ title: "API Key Recovered", description: `A Groq API key is now operational.` });
+        }
+        apiKey.isHealthy = true;
+        apiKey.failureCount = 0;
+        apiKey.lastFailureTime = 0;
+      } else {
+        if (wasHealthy) {
+          console.warn(`[API Client] Key ${index} failed health check and is now marked as unhealthy.`);
+          apiKey.isHealthy = false;
+          apiKey.lastFailureTime = now;
+          apiKey.failureCount = 1; // Start failure count at 1
+        }
+      }
+    } else {
+       console.log(`[API Client] Skipping health check for Key ${index} (in cooldown).`);
+    }
+  });
+
+  await Promise.allSettled(checks);
+  saveApiKeyStatus();
+  console.log('[API Client] Health checks complete.');
 }
 
 function loadApiKeys() {
-  const storedStatus = localStorage.getItem(API_KEY_STATUS_STORAGE_KEY);
-  let initialStatus: { isHealthy: boolean; lastFailureTime: number; failureCount: number; }[] = [];
-
-  if (storedStatus) {
-    try {
-      initialStatus = JSON.parse(storedStatus);
-      console.log('[API Client] Loaded API key status from localStorage:', initialStatus);
-    } catch (e) {
-      console.error('[API Client] Error parsing stored API key status, re-initializing.', e);
-    }
-  }
-
   const rawKeys = [
     import.meta.env.VITE_GROQ_API_KEY_PRIMARY,
     import.meta.env.VITE_GROQ_API_KEY_SECONDARY_1,
     import.meta.env.VITE_GROQ_API_KEY_SECONDARY_2,
-  ].filter(key => key); // Filter out undefined/empty keys
+  ].filter(Boolean) as string[];
 
-  apiKeys = rawKeys.map((key, index) => {
-    const status = initialStatus[index] || { isHealthy: true, lastFailureTime: 0, failureCount: 0 };
+  if (rawKeys.length === 0) {
+    console.error('No Groq API keys found in .env file.');
+    return;
+  }
+
+  let storedStatus: any[] = [];
+  try {
+    const stored = localStorage.getItem(API_KEY_STATUS_STORAGE_KEY);
+    if (stored) storedStatus = JSON.parse(stored);
+  } catch (e) {
+    console.error('[API Client] Error parsing stored API key status.', e);
+  }
+
+  const storedStatusMap = new Map(storedStatus.map(s => [s.key, s]));
+
+  apiKeys = rawKeys.map(key => {
+    const status = storedStatusMap.get(key);
     return {
-      key: key as string,
-      isHealthy: status.isHealthy,
-      lastFailureTime: status.lastFailureTime,
-      failureCount: status.failureCount,
-      lastUsed: 0, // Initialize lastUsed to 0, will be updated on first use
+      key,
+      isHealthy: status?.isHealthy ?? true,
+      lastFailureTime: status?.lastFailureTime ?? 0,
+      failureCount: status?.failureCount ?? 0,
+      lastUsed: 0,
     };
   });
 
-  if (apiKeys.length === 0) {
-    throw new Error('No Groq API keys found. Please add VITE_GROQ_API_KEY_PRIMARY and/or VITE_GROQ_API_KEY_SECONDARY_1 and VITE_GROQ_API_KEY_SECONDARY_2 to your .env file.');
-  }
-  console.log('[API Client] Initialized API keys:', apiKeys.map(k => ({ isHealthy: k.isHealthy, lastFailureTime: k.lastFailureTime, failureCount: k.failureCount })));
+  console.log('[API Client] Initialized API keys with status:', apiKeys);
+
+  // Start periodic health checks
+  if (healthCheckIntervalId) clearInterval(healthCheckIntervalId);
+  healthCheckIntervalId = window.setInterval(() => runHealthChecks(), HEALTH_CHECK_INTERVAL);
+
+  // Run initial check on load
+  runHealthChecks();
 }
 
-function saveApiKeyStatus() {
-  const statusToStore = apiKeys.map(key => ({
-    isHealthy: key.isHealthy,
-    lastFailureTime: key.lastFailureTime,
-    failureCount: key.failureCount,
-  }));
-  localStorage.setItem(API_KEY_STATUS_STORAGE_KEY, JSON.stringify(statusToStore));
-  console.log('[API Client] Saved API key status to localStorage:', statusToStore);
-}
-
-// Load keys on module initialization
+// Initial load
 loadApiKeys();
 
 export const apiClient = {
   async post(url: string, body: any) {
-    const MAX_RETRIES_PER_REQUEST = apiKeys.length * 2; // Allow multiple attempts across keys
+    const now = Date.now();
 
-    let attempts = 0;
-    let lastError: Error | null = null;
+    const availableKeys = apiKeys
+      .filter(k => k.isHealthy)
+      .sort((a, b) => a.lastUsed - b.lastUsed); // Least recently used
 
-    while (attempts < MAX_RETRIES_PER_REQUEST) {
-      attempts++;
-      console.log(`[API Client] Attempt ${attempts}/${MAX_RETRIES_PER_REQUEST}`);
+    if (availableKeys.length === 0) {
+      console.error("[API Client] No healthy API keys available. Falling back immediately.");
+      runHealthChecks(true); // Force a re-check in the background
+      throw new AllGroqKeysFailedError("No healthy Groq API keys available.");
+    }
 
-      let selectedKeyIndex = -1;
-      let bestKeyScore = -1;
-
-      // Prioritize healthy keys, then keys coming off cooldown, using round-robin
-      const now = Date.now();
-      const sortedKeys = [...apiKeys]
-        .map((key, index) => ({ key, index }))
-        .sort((a, b) => {
-          const aCooldown = calculateCooldown(a.key.failureCount);
-          const bCooldown = calculateCooldown(b.key.failureCount);
-
-          const aReady = a.key.isHealthy || (now - a.key.lastFailureTime > aCooldown);
-          const bReady = b.key.isHealthy || (now - b.key.lastFailureTime > bCooldown);
-
-          // Prioritize ready keys
-          if (aReady && !bReady) return -1;
-          if (!aReady && bReady) return 1;
-
-          // Among ready keys, prioritize healthy ones
-          if (a.key.isHealthy && !b.key.isHealthy) return -1;
-          if (!a.key.isHealthy && b.key.isHealthy) return 1;
-
-          // Among equally healthy/unhealthy and ready keys, use round-robin (least recently used)
-          return a.key.lastUsed - b.key.lastUsed;
-        });
-
-      for (const { key: keyCandidate, index } of sortedKeys) {
-        const currentKeyCooldown = calculateCooldown(keyCandidate.failureCount);
-        const timeSinceLastFailure = now - keyCandidate.lastFailureTime;
-        const isReady = keyCandidate.isHealthy || (timeSinceLastFailure > currentKeyCooldown);
-
-        if (isReady) {
-          selectedKeyIndex = index;
-          console.log(`[API Client] Selected Key ${selectedKeyIndex} (Round-Robin). Healthy=${keyCandidate.isHealthy}, Failures=${keyCandidate.failureCount}, Cooldown=${currentKeyCooldown}ms, Time since last failure=${timeSinceLastFailure}ms`);
-          break;
-        } else {
-          console.log(`[API Client] Key ${index} is not ready. Healthy=${keyCandidate.isHealthy}, Failures=${keyCandidate.failureCount}, Cooldown=${currentKeyCooldown}ms, Time since last failure=${timeSinceLastFailure}ms (${Math.ceil((currentKeyCooldown - timeSinceLastFailure) / 1000)}s left)`);
-        }
-      }
-
-      if (selectedKeyIndex === -1) {
-        console.warn('[API Client] All API keys are currently unhealthy and in cooldown. Cannot make request.');
-        throw new AllGroqKeysFailedError("All API keys are currently unavailable. Please try again later.");
-      }
-
-      const currentApiKey = apiKeys[selectedKeyIndex];
-      currentApiKey.lastUsed = now; // Update last used timestamp for round-robin
-      saveApiKeyStatus(); // Save status after updating lastUsed
-
-      console.log(`Attempting API call with key index: ${selectedKeyIndex}`);
+    for (const currentApiKey of availableKeys) {
+      console.log(`[API Client] Attempting API call with key ending in ...${currentApiKey.key.slice(-4)}`);
+      currentApiKey.lastUsed = now;
 
       try {
         const response = await fetch(url, {
@@ -148,42 +168,34 @@ export const apiClient = {
         });
 
         if (!response.ok) {
-          console.error(`[API Client] API response not OK for key ${selectedKeyIndex}: Status ${response.status}`);
-          throw new Error(`API error with key ${selectedKeyIndex}: ${response.status}`);
+          // Throw a specific error to be caught below
+          throw new Error(`API error: ${response.status} ${response.statusText}`);
         }
-
-        // If successful, mark key as healthy and reset failure count
-        if (!currentApiKey.isHealthy || currentApiKey.failureCount > 0) {
-          console.log(`[API Client] Key ${selectedKeyIndex} is now healthy. Resetting failure count.`);
-        }
-        currentApiKey.isHealthy = true;
-        currentApiKey.lastFailureTime = 0;
-        currentApiKey.failureCount = 0; // Reset failure count on success
-        saveApiKeyStatus(); // Save status on success
+        
+        // Success
         return response;
 
       } catch (error: any) {
-        console.error(`[API Client] API call failed with key ${selectedKeyIndex}:`, error);
-        lastError = error;
-
-        // Mark key as unhealthy and increment failure count
-        if (currentApiKey.isHealthy) {
-          console.warn(`[API Client] Key ${selectedKeyIndex} marked as unhealthy. Incrementing failure count.`);
-        }
+        console.error(`[API Client] API call failed for key ...${currentApiKey.key.slice(-4)}:`, error.message);
+        
+        // Mark as unhealthy and update failure stats
         currentApiKey.isHealthy = false;
         currentApiKey.lastFailureTime = now;
-        currentApiKey.failureCount++; // Increment failure count
-        saveApiKeyStatus(); // Save status on failure
+        currentApiKey.failureCount++;
+        saveApiKeyStatus();
 
         toast({
-          title: "API Request Failed",
-          description: `Switching to next available API key.`, // More generic message
+          title: "Groq API Request Failed",
+          description: `An API key failed. Trying the next available key.`,
+          variant: "destructive"
         });
       }
     }
 
-    console.error(`[API Client] All API keys failed after ${MAX_RETRIES_PER_REQUEST} attempts. Last error: ${lastError?.message || "Unknown error"}`);
-    throw new AllGroqKeysFailedError(`All API keys failed after multiple attempts. Last error: ${lastError?.message || "Unknown error"}`);
+    // If all healthy keys failed in this loop
+    console.error("[API Client] All available healthy keys failed during the request loop.");
+    throw new AllGroqKeysFailedError("All available Groq API keys failed.");
   }
 };
+
             
