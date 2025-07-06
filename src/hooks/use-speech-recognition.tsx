@@ -98,34 +98,28 @@ export const useSpeechRecognition = ({ setDannyState, handleUserInput, dannyStat
       setDannyState('listening');
       finalTranscriptRef.current = '';
       setCurrentTranscript('');
-      clearAllTimeouts(); // Clear all timeouts on start
-
+      if (listeningToThinkingTimeoutRef.current) clearTimeout(listeningToThinkingTimeoutRef.current);
+      if (noSpeechTimeoutRef.current) clearTimeout(noSpeechTimeoutRef.current);
       // Start timer to switch to thinking state after 3 seconds of listening
       listeningToThinkingTimeoutRef.current = setTimeout(() => {
         setDannyState('thinking');
       }, 3000);
-
-      // Start no speech timeout for initial silence
+      // Start no speech timeout
       noSpeechTimeoutRef.current = setTimeout(() => {
         recognition.stop();
         const errorMessage = "I didn't hear anything. Please try speaking when the microphone is active!";
-        setCurrentResponse(errorMessage);
-        setIsSpeakingStarted(true);
-        synthesizeSpeech(errorMessage, undefined, false, (word: string, index: number) => {}, () => {}, () => {
-          setCurrentResponse('');
-          setIsSpeakingStarted(false);
-        });
+        synthesizeSpeech(errorMessage);
         toast({
           title: "No Speech Detected",
           description: errorMessage,
           variant: "destructive",
         });
-      }, 5000); // 5 seconds timeout for no speech at all
+      }, 5000); // 5 seconds timeout for no speech
     });
 
     recognition.addEventListener('result', (event: SpeechRecognitionEvent) => {
-      console.log('[Speech Recognition] Result event fired.', event);
-      clearAllTimeouts(); // Clear all timeouts on any result
+      if (speechEndTimeoutRef.current) clearTimeout(speechEndTimeoutRef.current);
+      if (noSpeechTimeoutRef.current) clearTimeout(noSpeechTimeoutRef.current); // Clear no speech timeout on result
 
       let interimTranscript = '';
       for (let i = event.resultIndex; i < event.results.length; i++) {
@@ -136,57 +130,44 @@ export const useSpeechRecognition = ({ setDannyState, handleUserInput, dannyStat
           interimTranscript += transcript;
         }
       }
-      const newCurrentTranscript = finalTranscriptRef.current + interimTranscript;
-      setCurrentTranscript(newCurrentTranscript);
-      console.log(`[Speech Recognition] Interim: "${interimTranscript}", Final Ref: "${finalTranscriptRef.current}", Current State: "${newCurrentTranscript}"`);
+      setCurrentTranscript(finalTranscriptRef.current + interimTranscript);
 
-      // Set timeout to process final transcript after a pause
-      speechEndTimeoutRef.current = setTimeout(() => {
-        const finalTranscript = finalTranscriptRef.current.trim();
-        if (finalTranscript) {
-          recognition.stop(); // Stop recognition to trigger 'end' event
-          handleUserInput(finalTranscript);
-          setCurrentTranscript(''); // Clear the transcript after processing
-        }
-      }, 3000); // 3 seconds of silence to consider phrase ended
-
-      // Reset no speech timeout for prolonged silence after speech
+      // Restart no speech timeout on result
       noSpeechTimeoutRef.current = setTimeout(() => {
         recognition.stop();
         const errorMessage = "I stopped listening because I didn't hear anything for a while. Feel free to try again!";
-        setCurrentResponse(errorMessage);
-        setIsSpeakingStarted(true);
-        synthesizeSpeech(errorMessage, undefined, false, (word: string, index: number) => {}, () => {}, () => {
-          setCurrentResponse('');
-          setIsSpeakingStarted(false);
-        });
+        synthesizeSpeech(errorMessage);
         toast({
           title: "No Further Speech Detected",
           description: errorMessage,
           variant: "destructive",
         });
-      }, 5000); // 5 seconds timeout for no further speech
+      }, 8000); // 7 seconds timeout for no further speech
+
+      speechEndTimeoutRef.current = setTimeout(() => {
+        const finalTranscript = finalTranscriptRef.current.trim();
+        if (finalTranscript) {
+          recognition.stop();
+          handleUserInput(finalTranscript);
+        }
+      }, 5000);
     });
 
     recognition.addEventListener('end', () => {
-      console.log(`[Speech Recognition] End event fired. Final Transcript Ref: "${finalTranscriptRef.current}", Current Transcript State: "${currentTranscript}"`);
-      clearAllTimeouts(); // Clear all timeouts on end
+      if (speechEndTimeoutRef.current) clearTimeout(speechEndTimeoutRef.current);
+      if (listeningToThinkingTimeoutRef.current) clearTimeout(listeningToThinkingTimeoutRef.current);
+      if (noSpeechTimeoutRef.current) clearTimeout(noSpeechTimeoutRef.current);
       setIsMicActive(false);
       setDannyState('idle');
-      setCurrentTranscript(''); // Clear transcript on end
     });
 
     recognition.addEventListener('error', (event: SpeechRecognitionErrorEvent) => {
-      clearAllTimeouts(); // Clear all timeouts on error
-
+      if (speechEndTimeoutRef.current) clearTimeout(speechEndTimeoutRef.current);
+      if (listeningToThinkingTimeoutRef.current) clearTimeout(listeningToThinkingTimeoutRef.current);
+      if (noSpeechTimeoutRef.current) clearTimeout(noSpeechTimeoutRef.current);
       setDannyState('error_speech_recognition');
       const errorMessage = "Oops, something went wrong! I couldn't quite catch that. Please try speaking a bit louder or closer to the microphone.";
-      setCurrentResponse(errorMessage);
-      setIsSpeakingStarted(true);
-      synthesizeSpeech(errorMessage, undefined, false, (word: string, index: number) => {}, () => {}, () => {
-        setCurrentResponse('');
-        setIsSpeakingStarted(false);
-      });
+      synthesizeSpeech(errorMessage);
       toast({
         title: "Oops, something went wrong!",
         description: "I couldn't quite catch that. Please try speaking a bit louder or closer to the microphone.",
