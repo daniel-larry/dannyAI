@@ -60,7 +60,6 @@ export const useSpeechRecognition = ({ setDannyState, handleUserInput, dannyStat
   const { toast } = useToast();
   const { synthesizeSpeech } = useVoiceSettings();
 
-  // Helper to clear all timeouts
   const clearAllTimeouts = () => {
     if (speechEndTimeoutRef.current) clearTimeout(speechEndTimeoutRef.current);
     if (listeningToThinkingTimeoutRef.current) clearTimeout(listeningToThinkingTimeoutRef.current);
