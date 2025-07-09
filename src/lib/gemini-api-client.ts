@@ -24,7 +24,7 @@ function loadApiKeys() {
   }
 }
 
-// Initial load
+// remember to do Initial load
 loadApiKeys();
 
 export const geminiApiClient = {
@@ -66,13 +66,13 @@ export const geminiApiClient = {
           variant: "destructive"
         });
 
-        // Move to the next key
+        // try to Move to the next key
         currentApiKeyIndex = (currentApiKeyIndex + 1) % apiKeys.length;
         attempts++;
       }
     }
 
-    // If we've looped through all keys and all have failed
+    // If i loopede through all keys and all have failed
     console.error("[API Client] All available Gemini API keys failed.");
     // Reset index to start from the beginning on the next logical request
     currentApiKeyIndex = initialIndex; 
